@@ -271,10 +271,10 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
 
   private static final Indent.Const ZERO = Indent.Const.ZERO;
   private final int indentMultiplier;
-  private final Indent.Const minusTwo;
-  private final Indent.Const minusFour;
-  private final Indent.Const plusTwo;
-  private final Indent.Const plusFour;
+  private final Indent.Const minusOneLevel;
+  private final Indent.Const minusTwoLevels;
+  private final Indent.Const plusOneLevel;
+  private final Indent.Const plusTwoLevels;
 
   private static final ImmutableList<Op> breakList(Optional<BreakTag> breakTag) {
     return ImmutableList.of(Doc.Break.make(Doc.FillMode.UNIFIED, " ", ZERO, breakTag));
@@ -307,10 +307,10 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
   public JavaInputAstVisitor(OpsBuilder builder, int indentMultiplier) {
     this.builder = builder;
     this.indentMultiplier = indentMultiplier;
-    minusTwo = Indent.Const.make(-2, indentMultiplier);
-    minusFour = Indent.Const.make(-4, indentMultiplier);
-    plusTwo = Indent.Const.make(+2, indentMultiplier);
-    plusFour = Indent.Const.make(+4, indentMultiplier);
+    minusOneLevel = Indent.Const.make(-2, indentMultiplier);
+    minusTwoLevels = Indent.Const.make(-4, indentMultiplier);
+    plusOneLevel = Indent.Const.make(+2, indentMultiplier);
+    plusTwoLevels = Indent.Const.make(+4, indentMultiplier);
   }
 
   /** A record of whether we have visited into an expression. */
@@ -423,7 +423,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     builder.close();
     builder.close();
     if (node.getMembers() == null) {
-      builder.open(plusFour);
+      builder.open(plusTwoLevels);
       token(";");
       builder.close();
     } else {
@@ -442,7 +442,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
   @Override
   public Void visitNewArray(NewArrayTree node, Void unused) {
     if (node.getType() != null) {
-      builder.open(plusFour);
+      builder.open(plusTwoLevels);
       token("new");
       builder.space();
 
@@ -474,13 +474,13 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
   public boolean visitArrayInitializer(List<? extends ExpressionTree> expressions) {
     int cols;
     if (expressions.isEmpty()) {
-      tokenBreakTrailingComment("{", plusTwo);
+      tokenBreakTrailingComment("{", plusOneLevel);
       if (builder.peekToken().equals(Optional.of(","))) {
         token(",");
       }
-      token("}", plusTwo);
+      token("}", plusOneLevel);
     } else if ((cols = argumentsAreTabular(expressions)) != -1) {
-      builder.open(plusTwo);
+      builder.open(plusOneLevel);
       token("{");
       builder.forcedBreak();
       boolean first = true;
@@ -488,7 +488,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         if (!first) {
           builder.forcedBreak();
         }
-        builder.open(row.iterator().next().getKind() == NEW_ARRAY || cols == 1 ? ZERO : plusFour);
+        builder.open(row.iterator().next().getKind() == NEW_ARRAY || cols == 1 ? ZERO : plusTwoLevels);
         boolean firstInRow = true;
         for (ExpressionTree item : row) {
           if (!firstInRow) {
@@ -502,9 +502,9 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         builder.close();
         first = false;
       }
-      builder.breakOp(minusTwo);
+      builder.breakOp(minusOneLevel);
       builder.close();
-      token("}", plusTwo);
+      token("}", plusOneLevel);
     } else {
       // Special-case the formatting of array initializers inside annotations
       // to more eagerly use a one-per-line layout.
@@ -524,8 +524,8 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       boolean shortItems = hasOnlyShortItems(expressions);
       boolean allowFilledElementsOnOwnLine = shortItems || !inMemberValuePair;
 
-      builder.open(plusTwo);
-      tokenBreakTrailingComment("{", plusTwo);
+      builder.open(plusOneLevel);
+      tokenBreakTrailingComment("{", plusOneLevel);
       boolean hasTrailingComma = hasTrailingToken(builder.getInput(), expressions, ",");
       builder.breakOp(hasTrailingComma ? FillMode.FORCED : FillMode.UNIFIED, "", ZERO);
       if (allowFilledElementsOnOwnLine) {
@@ -545,9 +545,9 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       if (allowFilledElementsOnOwnLine) {
         builder.close();
       }
-      builder.breakOp(minusTwo);
+      builder.breakOp(minusOneLevel);
       builder.close();
-      token("}", plusTwo);
+      token("}", plusOneLevel);
     }
     return false;
   }
@@ -573,7 +573,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
 
   private void visitAnnotatedArrayType(Tree node) {
     TypeWithDims extractedDims = DimensionHelpers.extractDims(node, SortedDims.YES);
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     scan(extractedDims.node, null);
     Deque<List<AnnotationTree>> dims = new ArrayDeque<>(extractedDims.dims);
     maybeAddDims(dims);
@@ -587,7 +587,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     builder.open(ZERO);
     token("assert");
     builder.space();
-    builder.open(node.getDetail() == null ? ZERO : plusFour);
+    builder.open(node.getDetail() == null ? ZERO : plusTwoLevels);
     scan(node.getCondition(), null);
     if (node.getDetail() != null) {
       builder.breakOp(" ");
@@ -604,7 +604,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
   @Override
   public Void visitAssignment(AssignmentTree node, Void unused) {
     sync(node);
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     scan(node.getVariable(), null);
     builder.space();
     splitToken(operatorName(node));
@@ -623,7 +623,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
   @Override
   public Void visitCompoundAssignment(CompoundAssignmentTree node, Void unused) {
     sync(node);
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     scan(node.getVariable(), null);
     builder.space();
     splitToken(operatorName(node));
@@ -636,7 +636,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
   @Override
   public Void visitBreak(BreakTree node, Void unused) {
     sync(node);
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     token("break");
     if (node.getLabel() != null) {
       builder.breakOp(" ");
@@ -650,7 +650,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
   @Override
   public Void visitTypeCast(TypeCastTree node, Void unused) {
     sync(node);
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     token("(");
     scan(node.getType(), null);
     token(")");
@@ -671,14 +671,14 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     }
     token("new");
     builder.space();
-    addTypeArguments(node.getTypeArguments(), plusFour);
+    addTypeArguments(node.getTypeArguments(), plusTwoLevels);
     if (node.getClassBody() != null) {
       builder.addAll(
           visitModifiers(
               node.getClassBody().getModifiers(), Direction.HORIZONTAL, Optional.empty()));
     }
     scan(node.getIdentifier(), null);
-    addArguments(node.getArguments(), plusFour);
+    addArguments(node.getArguments(), plusTwoLevels);
     builder.close();
     if (node.getClassBody() != null) {
       addBodyDeclarations(
@@ -690,7 +690,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
   @Override
   public Void visitConditionalExpression(ConditionalExpressionTree node, Void unused) {
     sync(node);
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     scan(node.getCondition(), null);
     builder.breakOp(" ");
     token("?");
@@ -707,7 +707,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
   @Override
   public Void visitContinue(ContinueTree node, Void unused) {
     sync(node);
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     token("continue");
     if (node.getLabel() != null) {
       builder.breakOp(" ");
@@ -785,7 +785,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       builder.guessToken("(");
       builder.guessToken(")");
     } else {
-      addArguments(init.getArguments(), plusFour);
+      addArguments(init.getArguments(), plusTwoLevels);
     }
     if (init.getClassBody() != null) {
       addBodyDeclarations(
@@ -800,16 +800,16 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         node.getModifiers(),
         Direction.VERTICAL,
         /* declarationAnnotationBreak= */ Optional.empty());
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     token("enum");
     builder.breakOp(" ");
     visit(node.getSimpleName());
     builder.close();
     builder.close();
     if (!node.getImplementsClause().isEmpty()) {
-      builder.open(plusFour);
+      builder.open(plusTwoLevels);
       builder.breakOp(" ");
-      builder.open(plusFour);
+      builder.open(plusTwoLevels);
       token("implements");
       builder.breakOp(" ");
       builder.open(ZERO);
@@ -827,7 +827,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       builder.close();
     }
     builder.space();
-    tokenBreakTrailingComment("{", plusTwo);
+    tokenBreakTrailingComment("{", plusOneLevel);
     ArrayList<VariableTree> enumConstants = new ArrayList<>();
     ArrayList<Tree> members = new ArrayList<>();
     for (Tree member : node.getMembers()) {
@@ -842,7 +842,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     }
     if (enumConstants.isEmpty() && members.isEmpty()) {
       if (builder.peekToken().equals(Optional.of(";"))) {
-        builder.open(plusTwo);
+        builder.open(plusOneLevel);
         builder.forcedBreak();
         token(";");
         builder.forcedBreak();
@@ -851,7 +851,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         builder.open(ZERO);
         builder.forcedBreak();
         builder.blankLineWanted(BlankLineWanted.NO);
-        token("}", plusTwo);
+        token("}", plusOneLevel);
         builder.close();
       } else {
         builder.open(ZERO);
@@ -860,7 +860,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         builder.close();
       }
     } else {
-      builder.open(plusTwo);
+      builder.open(plusOneLevel);
       builder.blankLineWanted(BlankLineWanted.NO);
       builder.forcedBreak();
       builder.open(ZERO);
@@ -882,7 +882,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       builder.close();
       builder.close();
       if (builder.peekToken().equals(Optional.of(";"))) {
-        builder.open(plusTwo);
+        builder.open(plusOneLevel);
         token(";");
         builder.forcedBreak();
         dropEmptyDeclarations();
@@ -892,7 +892,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       addBodyDeclarations(members, BracesOrNot.NO, FirstDeclarationsOrNot.NO);
       builder.forcedBreak();
       builder.blankLineWanted(BlankLineWanted.NO);
-      token("}", plusTwo);
+      token("}", plusOneLevel);
       builder.close();
     }
     builder.guessToken(";");
@@ -902,11 +902,11 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
   @Override
   public Void visitMemberReference(MemberReferenceTree node, Void unused) {
     sync(node);
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     scan(node.getQualifierExpression(), null);
     builder.breakOp();
     builder.op("::");
-    addTypeArguments(node.getTypeArguments(), plusFour);
+    addTypeArguments(node.getTypeArguments(), plusTwoLevels);
     switch (node.getMode()) {
       case INVOKE:
         visit(node.getName());
@@ -981,11 +981,11 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     token("for");
     builder.space();
     token("(");
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     builder.open(
         node.getInitializer().size() > 1
                 && node.getInitializer().get(0).getKind() == Tree.Kind.EXPRESSION_STATEMENT
-            ? plusFour
+            ? plusTwoLevels
             : ZERO);
     if (!node.getInitializer().isEmpty()) {
       if (node.getInitializer().get(0).getKind() == VARIABLE) {
@@ -1018,7 +1018,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     token(";");
     if (!node.getUpdate().isEmpty()) {
       builder.breakOp(" ");
-      builder.open(node.getUpdate().size() <= 1 ? ZERO : plusFour);
+      builder.open(node.getUpdate().size() <= 1 ? ZERO : plusTwoLevels);
       boolean firstUpdater = true;
       for (ExpressionStatementTree updater : node.getUpdate()) {
         if (!firstUpdater) {
@@ -1132,7 +1132,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     List<String> operators = new ArrayList<>();
     walkInfix(precedence(node), node, operands, operators);
     FillMode fillMode = hasOnlyShortItems(operands) ? INDEPENDENT : UNIFIED;
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     scan(operands.get(0), null);
     int operatorsN = operators.size();
     for (int i = 0; i < operatorsN; i++) {
@@ -1148,7 +1148,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
   @Override
   public Void visitInstanceOf(InstanceOfTree node, Void unused) {
     sync(node);
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     scan(node.getExpression(), null);
     builder.breakOp(" ");
     builder.open(ZERO);
@@ -1163,7 +1163,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
   @Override
   public Void visitIntersectionType(IntersectionTypeTree node, Void unused) {
     sync(node);
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     boolean first = true;
     for (Tree type : node.getBounds()) {
       if (!first) {
@@ -1195,7 +1195,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     sync(node);
     boolean statementBody = node.getBodyKind() == LambdaExpressionTree.BodyKind.STATEMENT;
     boolean parens = builder.peekToken().equals(Optional.of("("));
-    builder.open(parens ? plusFour : ZERO);
+    builder.open(parens ? plusTwoLevels : ZERO);
     if (parens) {
       token("(");
     }
@@ -1214,7 +1214,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     builder.close();
     builder.space();
     builder.op("->");
-    builder.open(statementBody ? ZERO : plusFour);
+    builder.open(statementBody ? ZERO : plusTwoLevels);
     if (statementBody) {
       builder.space();
     } else {
@@ -1245,7 +1245,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     token("@");
     scan(node.getAnnotationType(), null);
     if (!node.getArguments().isEmpty()) {
-      builder.open(plusFour);
+      builder.open(plusTwoLevels);
       token("(");
       builder.breakOp();
       boolean first = true;
@@ -1294,7 +1294,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
   public void visitAnnotationArgument(AssignmentTree node) {
     boolean isArrayInitializer = node.getExpression().getKind() == NEW_ARRAY;
     sync(node);
-    builder.open(isArrayInitializer ? ZERO : plusFour);
+    builder.open(isArrayInitializer ? ZERO : plusTwoLevels);
     scan(node.getVariable(), null);
     builder.space();
     token("=");
@@ -1357,7 +1357,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       dims = new ArrayDeque<>(extractedDims.dims);
     }
 
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     BreakTag breakBeforeName = genSym();
     BreakTag breakBeforeType = genSym();
     builder.open(ZERO);
@@ -1365,7 +1365,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       boolean first = true;
       if (!node.getTypeParameters().isEmpty()) {
         token("<");
-        typeParametersRest(node.getTypeParameters(), plusFour);
+        typeParametersRest(node.getTypeParameters(), plusTwoLevels);
         if (!returnTypeAnnotations.isEmpty()) {
           builder.breakToFill(" ");
           visitAnnotations(returnTypeAnnotations, BreakOrNot.NO, BreakOrNot.NO);
@@ -1383,7 +1383,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
           first = false;
         }
         if (!openedNameAndTypeScope) {
-          builder.open(make(breakBeforeType, plusFour, ZERO));
+          builder.open(make(breakBeforeType, plusTwoLevels, ZERO));
           openedNameAndTypeScope = true;
         }
         scan(baseReturnType, null);
@@ -1409,8 +1409,8 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     }
     builder.close();
 
-    builder.open(Indent.If.make(breakBeforeName, plusFour, ZERO));
-    builder.open(Indent.If.make(breakBeforeType, plusFour, ZERO));
+    builder.open(Indent.If.make(breakBeforeName, plusTwoLevels, ZERO));
+    builder.open(Indent.If.make(breakBeforeType, plusTwoLevels, ZERO));
     builder.open(ZERO);
     {
       if (!node.getParameters().isEmpty() || node.getReceiverParameter() != null) {
@@ -1424,7 +1424,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       }
       if (!node.getThrows().isEmpty()) {
         builder.breakToFill(" ");
-        builder.open(plusFour);
+        builder.open(plusTwoLevels);
         {
           visitThrowsClause(node.getThrows());
         }
@@ -1434,7 +1434,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         builder.space();
         token("default");
         if (node.getDefaultValue().getKind() == Tree.Kind.NEW_ARRAY) {
-          builder.open(minusFour);
+          builder.open(minusTwoLevels);
           {
             builder.space();
             scan(node.getDefaultValue(), null);
@@ -1457,7 +1457,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       token(";");
     } else {
       builder.space();
-      builder.token("{", Doc.Token.RealOrImaginary.REAL, plusTwo, Optional.of(plusTwo));
+      builder.token("{", Doc.Token.RealOrImaginary.REAL, plusOneLevel, Optional.of(plusOneLevel));
     }
     builder.close();
 
@@ -1472,7 +1472,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     if (node.getBody().getStatements().isEmpty()) {
       builder.blankLineWanted(BlankLineWanted.NO);
     } else {
-      builder.open(plusTwo);
+      builder.open(plusOneLevel);
       builder.forcedBreak();
       builder.blankLineWanted(BlankLineWanted.PRESERVE);
       visitStatements(node.getBody().getStatements());
@@ -1481,7 +1481,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       builder.blankLineWanted(BlankLineWanted.NO);
       markForPartialFormat();
     }
-    token("}", plusTwo);
+    token("}", plusOneLevel);
   }
 
   @Override
@@ -1597,7 +1597,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       }
       builder.forcedBreak();
     }
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     token("package");
     builder.space();
     visitName(packageName);
@@ -1613,7 +1613,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       token("<");
       token(">");
     } else {
-      builder.open(plusFour);
+      builder.open(plusTwoLevels);
       scan(node.getType(), null);
       token("<");
       builder.breakOp();
@@ -1750,7 +1750,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       return false;
     }
     boolean isArrayInitializer = value.getKind() == NEW_ARRAY;
-    builder.open(isArrayInitializer ? ZERO : plusFour);
+    builder.open(isArrayInitializer ? ZERO : plusTwoLevels);
     token("@");
     scan(node.getAnnotationType(), null);
     token("(");
@@ -1769,15 +1769,15 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     markForPartialFormat();
     builder.forcedBreak();
     if (node.getExpression() == null) {
-      token("default", plusTwo);
+      token("default", plusOneLevel);
       token(":");
     } else {
-      token("case", plusTwo);
+      token("case", plusOneLevel);
       builder.space();
       scan(node.getExpression(), null);
       token(":");
     }
-    builder.open(plusTwo);
+    builder.open(plusOneLevel);
     visitStatements(node.getStatements());
     builder.close();
     return null;
@@ -1792,9 +1792,9 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     scan(skipParen(node.getExpression()), null);
     token(")");
     builder.space();
-    tokenBreakTrailingComment("{", plusTwo);
+    tokenBreakTrailingComment("{", plusOneLevel);
     builder.blankLineWanted(BlankLineWanted.NO);
-    builder.open(plusTwo);
+    builder.open(plusOneLevel);
     boolean first = true;
     for (CaseTree caseTree : node.getCases()) {
       if (!first) {
@@ -1806,7 +1806,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     builder.close();
     builder.forcedBreak();
     builder.blankLineWanted(BlankLineWanted.NO);
-    token("}", plusFour);
+    token("}", plusTwoLevels);
     return null;
   }
 
@@ -1816,7 +1816,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     token("synchronized");
     builder.space();
     token("(");
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     builder.breakOp();
     scan(skipParen(node.getExpression()), null);
     builder.close();
@@ -1844,7 +1844,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     builder.space();
     if (!node.getResources().isEmpty()) {
       token("(");
-      builder.open(node.getResources().size() > 1 ? plusFour : ZERO);
+      builder.open(node.getResources().size() > 1 ? plusTwoLevels : ZERO);
       boolean first = true;
       for (Tree resource : node.getResources()) {
         if (!first) {
@@ -1925,12 +1925,12 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     if (!node.getTypeParameters().isEmpty()) {
       token("<");
     }
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     {
       if (!node.getTypeParameters().isEmpty()) {
         typeParametersRest(
             node.getTypeParameters(),
-            hasSuperclassType || hasSuperInterfaceTypes ? plusFour : ZERO);
+            hasSuperclassType || hasSuperInterfaceTypes ? plusTwoLevels : ZERO);
       }
       if (hasSuperclassType) {
         builder.breakToFill(" ");
@@ -1940,7 +1940,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       }
       if (hasSuperInterfaceTypes) {
         builder.breakToFill(" ");
-        builder.open(node.getImplementsClause().size() > 1 ? plusFour : ZERO);
+        builder.open(node.getImplementsClause().size() > 1 ? plusTwoLevels : ZERO);
         token(node.getKind() == Tree.Kind.INTERFACE ? "extends" : "implements");
         builder.space();
         boolean first = true;
@@ -1973,9 +1973,9 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     if (!node.getBounds().isEmpty()) {
       builder.space();
       token("extends");
-      builder.open(plusFour);
+      builder.open(plusTwoLevels);
       builder.breakOp(" ");
-      builder.open(plusFour);
+      builder.open(plusTwoLevels);
       boolean first = true;
       for (Tree typeBound : node.getBounds()) {
         if (!first) {
@@ -2020,7 +2020,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     builder.open(ZERO);
     token("?");
     if (node.getBound() != null) {
-      builder.open(plusFour);
+      builder.open(plusTwoLevels);
       builder.space();
       token(node.getKind() == EXTENDS_WILDCARD ? "extends" : "super");
       builder.breakOp(" ");
@@ -2070,14 +2070,14 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         // TODO(cushon): is this needed?
         token(";");
       } else {
-        tokenBreakTrailingComment("{", plusTwo);
+        tokenBreakTrailingComment("{", plusOneLevel);
         builder.blankLineWanted(BlankLineWanted.NO);
-        token("}", plusTwo);
+        token("}", plusOneLevel);
       }
     } else {
       builder.open(ZERO);
-      builder.open(plusTwo);
-      tokenBreakTrailingComment("{", plusTwo);
+      builder.open(plusOneLevel);
+      tokenBreakTrailingComment("{", plusOneLevel);
       if (allowLeadingBlankLine == AllowLeadingBlankLine.NO) {
         builder.blankLineWanted(BlankLineWanted.NO);
       } else {
@@ -2093,7 +2093,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         builder.blankLineWanted(BlankLineWanted.PRESERVE);
       }
       markForPartialFormat();
-      token("}", plusTwo);
+      token("}", plusOneLevel);
     }
   }
 
@@ -2110,7 +2110,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         visitBlock((BlockTree) node, collapseEmptyOrNot, allowLeadingBlank, allowTrailingBlank);
         break;
       default:
-        builder.open(plusTwo);
+        builder.open(plusOneLevel);
         builder.breakOp(" ");
         scan(node, null);
         builder.close();
@@ -2250,7 +2250,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     token("catch");
     builder.space();
     token("(");
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     VariableTree ex = node.getParameter();
     if (ex.getType().getKind() == UNION_TYPE) {
       builder.open(ZERO);
@@ -2407,11 +2407,11 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     scan(node.getName(), null);
     builder.space();
     if (node.getDirectives().isEmpty()) {
-      tokenBreakTrailingComment("{", plusTwo);
+      tokenBreakTrailingComment("{", plusOneLevel);
       builder.blankLineWanted(BlankLineWanted.NO);
-      token("}", plusTwo);
+      token("}", plusOneLevel);
     } else {
-      builder.open(plusTwo);
+      builder.open(plusOneLevel);
       token("{");
       builder.forcedBreak();
       Optional<Tree.Kind> previousDirective = Optional.empty();
@@ -2441,7 +2441,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     builder.space();
     scan(nameExpression, null);
     if (items != null) {
-      builder.open(plusFour);
+      builder.open(plusTwoLevels);
       builder.space();
       token(separator);
       builder.forcedBreak();
@@ -2618,7 +2618,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         scan(getArrayBase(node), null);
         token(".");
       } else {
-        builder.open(plusFour);
+        builder.open(plusTwoLevels);
         scan(getArrayBase(node), null);
         builder.breakOp();
         needDot = true;
@@ -2708,7 +2708,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     boolean trailingDereferences = items.size() > 1;
     boolean needDot0 = needDot;
     if (!needDot0) {
-      builder.open(plusFour);
+      builder.open(plusTwoLevels);
     }
     // don't break after the first element if it is every small, unless the
     // chain starts with another expression
@@ -2722,12 +2722,12 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         token(".");
         length++;
       }
-      if (!fillFirstArgument(e, items, trailingDereferences ? ZERO : minusFour)) {
+      if (!fillFirstArgument(e, items, trailingDereferences ? ZERO : minusTwoLevels)) {
         BreakTag tyargTag = genSym();
         dotExpressionUpToArgs(e, Optional.of(tyargTag));
-        Indent tyargIndent = Indent.If.make(tyargTag, plusFour, ZERO);
+        Indent tyargIndent = Indent.If.make(tyargTag, plusTwoLevels, ZERO);
         dotExpressionArgsAndParen(
-            e, tyargIndent, (trailingDereferences || needDot) ? plusFour : ZERO);
+            e, tyargIndent, (trailingDereferences || needDot) ? plusTwoLevels : ZERO);
       }
       length += getLength(e, getCurrentPath());
       needDot = true;
@@ -2788,7 +2788,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     // Are there method invocations or field accesses after the prefix?
     boolean trailingDereferences = !prefixes.isEmpty() && getLast(prefixes) < items.size() - 1;
 
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     for (int times = 0; times < prefixes.size(); times++) {
       builder.open(ZERO);
     }
@@ -2815,8 +2815,8 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         unconsumedPrefixes.removeFirst();
       }
 
-      Indent tyargIndent = Indent.If.make(tyargTag, plusFour, ZERO);
-      Indent argsIndent = Indent.If.make(nameTag, plusFour, trailingDereferences ? plusFour : ZERO);
+      Indent tyargIndent = Indent.If.make(tyargTag, plusTwoLevels, ZERO);
+      Indent argsIndent = Indent.If.make(nameTag, plusTwoLevels, trailingDereferences ? plusTwoLevels : ZERO);
       dotExpressionArgsAndParen(e, tyargIndent, argsIndent);
 
       needDot = true;
@@ -2862,7 +2862,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       case METHOD_INVOCATION:
         MethodInvocationTree methodInvocation = (MethodInvocationTree) expression;
         if (!methodInvocation.getTypeArguments().isEmpty()) {
-          builder.open(plusFour);
+          builder.open(plusTwoLevels);
           addTypeArguments(methodInvocation.getTypeArguments(), ZERO);
           // TODO(jdd): Should indent the name -4.
           builder.breakOp(Doc.FillMode.UNIFIED, "", ZERO, tyargTag);
@@ -2962,7 +2962,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
   }
 
   /**
-   * Add arguments to a method invocation, etc. The arguments indented {@code plusFour}, filled,
+   * Add arguments to a method invocation, etc. The arguments indented {@code plusTwoLevels}, filled,
    * from the current indent. The arguments may be output two at a time if they seem to be arguments
    * to a map constructor, etc.
    *
@@ -2984,7 +2984,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
             token(",");
             builder.forcedBreak();
           }
-          builder.open(plusFour);
+          builder.open(plusTwoLevels);
           scan(argument0, null);
           token(",");
           builder.breakOp(" ");
@@ -3229,14 +3229,14 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     builder.open(
         kind == DeclarationKind.PARAMETER
                 && (modifiers.isPresent() && !modifiers.get().getAnnotations().isEmpty())
-            ? plusFour
+            ? plusTwoLevels
             : ZERO);
     {
       if (modifiers.isPresent()) {
         visitAndBreakModifiers(
             modifiers.get(), annotationsDirection, Optional.of(verticalAnnotationBreak));
       }
-      builder.open(type != null ? plusFour : ZERO);
+      builder.open(type != null ? plusTwoLevels : ZERO);
       {
         builder.open(ZERO);
         {
@@ -3245,7 +3245,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
             if (typeWithDims.isPresent() && typeWithDims.get().node != null) {
               scan(typeWithDims.get().node, null);
               int totalDims = dims.size();
-              builder.open(plusFour);
+              builder.open(plusTwoLevels);
               maybeAddDims(dims);
               builder.close();
               baseDims = totalDims - dims.size();
@@ -3261,7 +3261,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
 
           // conditionally ident the name and initializer +4 if the type spans
           // multiple lines
-          builder.open(Indent.If.make(typeBreak, plusFour, ZERO));
+          builder.open(Indent.If.make(typeBreak, plusTwoLevels, ZERO));
           if (receiverExpression.isPresent()) {
             scan(receiverExpression.get(), null);
           } else {
@@ -3279,12 +3279,12 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         token(equals);
         if (initializer.get().getKind() == Tree.Kind.NEW_ARRAY
             && ((NewArrayTree) initializer.get()).getType() == null) {
-          builder.open(minusFour);
+          builder.open(minusTwoLevels);
           builder.space();
           initializer.get().accept(this, null);
           builder.close();
         } else {
-          builder.open(Indent.If.make(typeBreak, plusFour, ZERO));
+          builder.open(Indent.If.make(typeBreak, plusTwoLevels, ZERO));
           {
             builder.breakToFill(" ");
             scan(initializer.get(), null);
@@ -3380,7 +3380,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
 
     visitAndBreakModifiers(
         modifiers, annotationDirection, /* declarationAnnotationBreak= */ Optional.empty());
-    builder.open(plusFour);
+    builder.open(plusTwoLevels);
     builder.open(ZERO);
     TypeWithDims extractedDims = DimensionHelpers.extractDims(type, SortedDims.YES);
     Deque<List<AnnotationTree>> dims = new ArrayDeque<>(extractedDims.dims);
@@ -3404,7 +3404,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       if (initializer != null) {
         builder.space();
         token("=");
-        builder.open(plusFour);
+        builder.open(plusTwoLevels);
         builder.breakOp(" ");
         scan(initializer, null);
         builder.close();
@@ -3426,19 +3426,19 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     if (bodyDeclarations.isEmpty()) {
       if (braces.isYes()) {
         builder.space();
-        tokenBreakTrailingComment("{", plusTwo);
+        tokenBreakTrailingComment("{", plusOneLevel);
         builder.blankLineWanted(BlankLineWanted.NO);
         builder.open(ZERO);
-        token("}", plusTwo);
+        token("}", plusOneLevel);
         builder.close();
       }
     } else {
       if (braces.isYes()) {
         builder.space();
-        tokenBreakTrailingComment("{", plusTwo);
+        tokenBreakTrailingComment("{", plusOneLevel);
         builder.open(ZERO);
       }
-      builder.open(plusTwo);
+      builder.open(plusOneLevel);
       boolean first = first0.isYes();
       boolean lastOneGotBlankLineBefore = false;
       PeekingIterator<Tree> it = Iterators.peekingIterator(bodyDeclarations.iterator());
@@ -3473,7 +3473,7 @@ public final class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
       markForPartialFormat();
       if (braces.isYes()) {
         builder.blankLineWanted(BlankLineWanted.NO);
-        token("}", plusTwo);
+        token("}", plusOneLevel);
         builder.close();
       }
     }
